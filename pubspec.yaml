@@ -1,0 +1,47 @@
+name: skill_swap
+description: A new Flutter project for skill exchange based on time banking.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 1. State Management (إدارة الحالة)
+  provider: ^6.1.1
+
+  # 2. Networking (الاتصال بالسيرفر)
+  # Dio أفضل من http لأنه يدعم interceptors (للتوكين) و timeouts
+  dio: ^5.4.0
+  
+  
+  socket_io_client: ^2.0.3+1
+
+  # 4. Local Storage (تخزين التوكين والإعدادات)
+  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.0.0
+
+  google_fonts: ^6.1.0        
+  flutter_svg: ^2.0.9         
+  cached_network_image: ^3.3.1 
+  fluttertoast: ^8.2.4        
+
+  intl: ^0.19.0               
+  timeago: ^3.6.1            
+  jwt_decoder: ^2.0.1         
+
+  email_validator: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  flutter_launcher_icons: ^0.13.1
+  
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
