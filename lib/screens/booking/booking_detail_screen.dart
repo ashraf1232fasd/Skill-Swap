@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import 'package:intl/date_symbol_data_local.dart'; 
+import 'package:intl/date_symbol_data_local.dart';
 import '../../core/theme.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/service_provider.dart';
 import '../wallet/store_screen.dart';
+import '../../providers/chat_provider.dart'; // <--- (1) إضافة استيراد ChatProvider
+import '../chat/chat_screen.dart'; // <--- (2) إضافة استيراد شاشة الشات
 
 class BookingScreen extends StatefulWidget {
   final Map<String, dynamic> service;
@@ -19,13 +21,11 @@ class BookingScreen extends StatefulWidget {
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  // متغير لمعرفة هل تم تحميل بيانات اللغة العربية أم لا
   bool _isLocaleInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    // 2. تهيئة بيانات التاريخ العربي عند فتح الشاشة
     initializeDateFormatting('ar', null).then((_) {
       if (mounted) {
         setState(() {
@@ -39,7 +39,6 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget build(BuildContext context) {
     final bookingProvider = Provider.of<BookingProvider>(context);
 
-    // استخراج البيانات بأمان
     DateTime serviceDate;
     try {
       serviceDate = DateTime.parse(widget.service['datetime'].toString());
@@ -85,7 +84,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
             const SizedBox(height: 16),
 
-            // 2. بطاقة الموعد (تم إصلاح الخطأ هنا)
+            // 2. بطاقة الموعد
             _buildDateCard(serviceDate),
 
             const SizedBox(height: 16),
@@ -123,16 +122,36 @@ class _BookingScreenState extends State<BookingScreen> {
               _buildContactCard(fullPhone),
             ],
 
+            const SizedBox(height: 16),
+
+            // --- (3) إضافة زر المراسلة الجديد ---
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _handleChatAction(context),
+                icon: const Icon(Icons.chat, color: AppTheme.primary),
+                label: Text(
+                  'مراسلة الناشر',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: AppTheme.primary),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  backgroundColor: Colors.white,
+                ),
+              ),
+            ),
+
             const SizedBox(height: 20),
 
             // 5. التنبيه المالي
             _buildFinancialAlert(isRequest, price),
 
-            const SizedBox(height: 100), 
+            const SizedBox(height: 100),
           ],
         ),
       ),
-      
       bottomSheet: Container(
         color: const Color(0xFFF8F9FD),
         padding: const EdgeInsets.all(20),
@@ -259,9 +278,8 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Widget _buildDateCard(DateTime date) {
-    // 3. التحقق قبل العرض: إذا لم تتهيأ اللغة العربية، اعرض بالإنجليزية مؤقتاً لتجنب الكراش
     final isReady = _isLocaleInitialized;
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -290,11 +308,10 @@ class _BookingScreenState extends State<BookingScreen> {
                 'موعد الجلسة',
                 style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey),
               ),
-              // استخدام اللغة العربية فقط إذا كانت جاهزة
               Text(
-                isReady 
-                  ? DateFormat('EEEE, d MMMM', 'ar').format(date)
-                  : DateFormat('EEEE, d MMMM').format(date), 
+                isReady
+                    ? DateFormat('EEEE, d MMMM', 'ar').format(date)
+                    : DateFormat('EEEE, d MMMM').format(date),
                 style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               Text(
@@ -380,6 +397,57 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   // --- Logic ---
+
+  // --- (4) منطق فتح الشات الجديد ---
+  Future<void> _handleChatAction(BuildContext context) async {
+    final myId = Provider.of<AuthProvider>(context, listen: false).user?.id;
+    final providerData = widget.service['provider'] ?? widget.service['user'];
+    final providerId = providerData != null ? providerData['_id'] : null;
+
+    if (providerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر العثور على بيانات المستخدم')),
+      );
+      return;
+    }
+
+    if (myId == providerId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يمكنك مراسلة نفسك!')),
+      );
+      return;
+    }
+
+    // إظهار Loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final chatData = await chatProvider.accessChat(providerId);
+
+    if (context.mounted) {
+      Navigator.pop(context); // إغلاق الـ Loading
+
+      if (chatData != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              chatId: chatData['_id'],
+              chatName: providerData['name'] ?? 'مستخدم',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حدث خطأ أثناء فتح المحادثة')),
+        );
+      }
+    }
+  }
 
   Future<void> _handleBookingAction(
     BuildContext context,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:skill_swap/providers/chat_provider.dart';
 import 'package:skill_swap/screens/booking/booking_detail_screen.dart';
 import 'package:skill_swap/screens/profile/profile_screen.dart';
 import '../../core/theme.dart';
@@ -8,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/service_provider.dart';
 import '../../widgets/service_card.dart';
 import '../services/add_service_screen.dart';
+import '../chat/my_chats_screen.dart'; // <--- (1) إضافة استيراد شاشة المحادثات
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,10 +23,19 @@ class _HomeScreenState extends State<HomeScreen> {
   String _filterType = 'all'; // all, offer, request
 
   @override
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // جلب الخدمات
       Provider.of<ServiceProvider>(context, listen: false).fetchServices();
+      
+      // >>>>> الإضافة الجديدة: تشغيل الشات <<<<<
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.user != null) {
+        // نرسل الـ ID الخاص بنا للسيرفر ليعرف أننا متصلون
+        Provider.of<ChatProvider>(context, listen: false).initSocket(authProvider.user!.id);
+      }
     });
   }
 
@@ -152,27 +163,51 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.white.withOpacity(0.8), Colors.white],
+              // --- (2) تم تعديل هذا الجزء لإضافة زر الرسائل والبروفايل ---
+              Row(
+                children: [
+                  // زر الرسائل
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyChatsScreen()),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 24),
                     ),
-                    shape: BoxShape.circle,
                   ),
-                  child: const CircleAvatar(
-                    radius: 23,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person, color: AppTheme.primary, size: 26),
+                  const SizedBox(width: 10),
+                  // زر البروفايل
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.white.withOpacity(0.8), Colors.white],
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const CircleAvatar(
+                        radius: 23,
+                        backgroundColor: Colors.white,
+                        child: Icon(Icons.person, color: AppTheme.primary, size: 26),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),

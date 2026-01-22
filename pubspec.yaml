@@ -12,7 +12,6 @@ dependencies:
 
   # 1. State Management (إدارة الحالة)
   provider: ^6.1.1
-
   # 2. Networking (الاتصال بالسيرفر)
   # Dio أفضل من http لأنه يدعم interceptors (للتوكين) و timeouts
   dio: ^5.4.0
